@@ -3535,10 +3535,12 @@ const CATEGORIES = {
   sostenibilidad: {label:"Sostenibilidad ambiental",  color:"#F6C945"},
   comunitario:    {label:"Turismo comunitario",       color:"#D02E34"},
   pacifico:       {label:"Turismo comunitario Pacífico", color:"#4A4570"},
+  turismopro:     {label:"Turismo +PRO",              color:"#1E7A5F"},
+  turismopaz:     {label:"Mejores proveedores en destinos de paz", color:"#B65C2E"},
 };
 const CATEGORY_DARK = {
   aglomeraciones:"#150D61", fabricas:"#0E2A7D", sostenibilidad:"#8A6A12",
-  comunitario:"#D02E34", pacifico:"#4A4570"
+  comunitario:"#D02E34", pacifico:"#4A4570", turismopro:"#155C46", turismopaz:"#8A431E"
 };
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJr8Eu7v4YijXKNlfPlcTY-vkTFhMI0wi2Q2fh7tELdlH_wu2tjRtK2S_5KmJPFlDsEQ/exec';
@@ -3565,6 +3567,10 @@ const INSTRUMENTO_KEY = {
   'TURISMO COMUNITARIO':'comunitario',
   'TURISMO COMUNITARIO LITORAL PACÍFICO':'pacifico',
   'TURISMO COMUNITARIO LITORAL PACIFICO':'pacifico',
+  'TURISMO +PRO':'turismopro',
+  'TURISMO+PRO':'turismopro',
+  'TURISMO PRO':'turismopro',
+  'MEJORES PROVEEDORES EN DESTINOS DE PAZ':'turismopaz',
 };
 
 function normHeader(s){
@@ -3591,6 +3597,23 @@ function getField(row, idx, keywordSets){
         if (val !== undefined && val !== null && String(val).trim() !== '') return String(val).trim();
       }
     }
+  }
+  return null;
+}
+
+// Coincidencia exacta de encabezado normalizado (evita ambigüedad entre columnas
+// parecidas, p.ej. "UBICACIÓN" vs "UBICACIÓN GEOGRÁFICA"). Si no hay match exacto,
+// cae de regreso a la búsqueda difusa por palabras clave (compatibilidad con
+// variaciones menores del encabezado en la hoja de Google Sheets en vivo).
+function getFieldEx(row, idx, exactCandidates, fuzzyKeywordSets){
+  for (const cand of exactCandidates){
+    if (idx[cand] !== undefined){
+      const val = row[idx[cand]];
+      if (val !== undefined && val !== null && String(val).trim() !== '') return String(val).trim();
+    }
+  }
+  if (fuzzyKeywordSets && fuzzyKeywordSets.length){
+    return getField(row, idx, fuzzyKeywordSets);
   }
   return null;
 }
@@ -3635,6 +3658,42 @@ function hashJitter(str, spread){
 
 const DEPT_CENTROIDS_SVG = computeDeptCentroidsSVG();
 
+// Paleta de respaldo para instrumentos que no están en INSTRUMENTO_KEY.
+// Así ningún nombre de instrumento se pierde bajo una etiqueta genérica "Otro":
+// cada instrumento nuevo que aparezca en la base recibe su propia categoría,
+// color y chip de filtro automáticamente.
+const EXTRA_CATEGORY_PALETTE = ['#2E8B57','#B5651D','#6A5ACD','#008B8B','#C71585','#556B2F','#4682B4','#8B4513','#20B2AA','#9932CC'];
+let extraCategoryCount = 0;
+const PROGRAMA_TO_KEY = {};
+
+function slugifyPrograma(s){
+  return (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'OTRO';
+}
+
+function resolveCategoryKey(programaRaw){
+  const programa = (programaRaw || '').trim();
+  if (!programa) return 'otro';
+  const upper = programa.toUpperCase();
+
+  if (INSTRUMENTO_KEY[upper]) return INSTRUMENTO_KEY[upper];
+  if (PROGRAMA_TO_KEY[upper]) return PROGRAMA_TO_KEY[upper];
+
+  const key = 'extra_' + slugifyPrograma(programa).toLowerCase();
+  PROGRAMA_TO_KEY[upper] = key;
+
+  if (!CATEGORIES[key]){
+    const color = EXTRA_CATEGORY_PALETTE[extraCategoryCount % EXTRA_CATEGORY_PALETTE.length];
+    extraCategoryCount++;
+    CATEGORIES[key] = { label: programa, color: color };
+    CATEGORY_DARK[key] = color;
+  }
+  return key;
+}
+
 function mapRowToBeneficiario(row, i){
   const idx = buildHeaderIndex(row);
 
@@ -3660,6 +3719,62 @@ function mapRowToBeneficiario(row, i){
   const nbeneficiadas = getField(row, idx, [['PERSONAS', 'BENEFICIADAS']]);
   const coordsRaw = getField(row, idx, [['COORDENADAS']]);
 
+  // === Resto de columnas de la base (73 en total) ===
+  const idInterno = getFieldEx(row, idx, ['ID'], []);
+  const beneficioRecibido = getFieldEx(row, idx, ['DESCRIPCION DEL BENEFICIO RECIBIDO'], [['DESCRIPCION','BENEFICIO']]);
+  const tipoIdentificacion = getFieldEx(row, idx, ['TIPO DE IDENTIFICACION USUARIO FINAL'], [['TIPO','IDENTIFICACION']]);
+  const sexo = getFieldEx(row, idx, ['SEXO'], []);
+  const grupoEtnico = getFieldEx(row, idx, ['PERTENECE A ALGUN GRUPO ETNICO'], [['GRUPO','ETNICO']]);
+  const discapacidad = getFieldEx(row, idx, ['EN CONDICION DE DISCAPACIDAD ¿CUAL?'], [['DISCAPACIDAD']]);
+  const victima = getFieldEx(row, idx, ['VICTIMA'], []);
+  const poblacionVulnerable = getFieldEx(row, idx, ['POBLACION VULNERABLE'], [['POBLACION','VULNERABLE']]);
+  const esMigrante = getFieldEx(row, idx, ['¿ES USTED UNA PERSONA MIGRANTE?'], [['PERSONA','MIGRANTE']]);
+  const paisMigrante = getFieldEx(row, idx, ['¿DE QUE PAIS ES MIGRANTE?'], [['PAIS','MIGRANTE']]);
+  const lgbtiq = getFieldEx(row, idx, ['¿HACE USTED PARTE DE LOS SECTORES SOCIALES LGBTIQ+ Y/O PERSONAS QUE SE RECONOCEN CON ORIENTACIONES SEXUALES E IDENTIDADES DE GENERO DIVERSAS?'], [['LGBTIQ']]);
+  const trabajoCuidado = getFieldEx(row, idx, ['¿CONSIDERA USTED QUE REALIZA TRABAJOS DE CUIDADO DIRECTO O INDIRECTO, REMUNERADOS O NO REMUNERADOS?'], [['TRABAJOS','CUIDADO']]);
+  const adultoMayor = getFieldEx(row, idx, ['¿ES USTED UNA PERSONA DE 60 ANOS O MAS ?'], [['60','ANOS']]);
+  const joven = getFieldEx(row, idx, ['¿ES USTED UNA PERSONA ENTRE 14 Y 28 ANOS ?'], [['14','28']]);
+  const veterano = getFieldEx(row, idx, ['¿ES USTED UN VETERANO DE LA FUERZA PUBLICA O UN BENEFICIARIO DE VETERANO DE LA FUERZA PUBLICA?'], [['VETERANO']]);
+  const fechaNacimiento = getFieldEx(row, idx, ['FECHA DE NACIMIENTO'], [['FECHA','NACIMIENTO']]);
+  const edad = getFieldEx(row, idx, ['EDAD'], []);
+  const escolaridad = getFieldEx(row, idx, ['NIVEL DE ESCOLARIDAD'], [['ESCOLARIDAD']]);
+  const ubicacionGeografica = getFieldEx(row, idx, ['UBICACION GEOGRAFICA'], [['UBICACION','GEOGRAFICA']]);
+  const actividadCIIU = getFieldEx(row, idx, ['ACTIVIDAD ECONOMICA CIIU'], [['ACTIVIDAD','CIIU']]);
+  const subsector = getFieldEx(row, idx, ['SUBSECTOR ECONOMICO DEL BENEFICIARIO'], [['SUBSECTOR']]);
+  const barrio = getFieldEx(row, idx, ['BARRIO DEL BENEFICIARIO'], [['BARRIO']]);
+  const direccion = getFieldEx(row, idx, ['DIRECCION DEL BENEFICIARIO'], [['DIRECCION','BENEFICIARIO']]);
+  const telefono = getFieldEx(row, idx, ['TELEFONO REPRESENTANTE LEGAL O BENEFICIARIO'], [['TELEFONO','REPRESENTANTE']]);
+  const telefonoOtro = getFieldEx(row, idx, ['OTRO TELEFONO'], [['OTRO','TELEFONO']]);
+  const email = getFieldEx(row, idx, ['EMAIL BENEFICIARIO'], [['EMAIL']]);
+  const fechaEstado = getFieldEx(row, idx, ['FECHA DE ESTADO DE INTERVENCION'], [['FECHA','ESTADO','INTERVENCION']]);
+  const razonRetiro = getFieldEx(row, idx, ['RAZON DEL RETIRO'], [['RAZON','RETIRO']]);
+  const tieneRut = getFieldEx(row, idx, ['¿TIENE RUT?'], [['TIENE','RUT']]);
+  const tieneRegistroMercantil = getFieldEx(row, idx, ['¿TIENE REGISTRO MERCANTIL?'], [['REGISTRO','MERCANTIL']]);
+  const fechaMatriculaMercantil = getFieldEx(row, idx, ['FECHA DE MATRICULA MERCANTIL'], [['MATRICULA','MERCANTIL']]);
+  const anosFormalizacion = getFieldEx(row, idx, ['ANOS DE FORMALIZACION'], [['FORMALIZACION']]);
+  const empleadosInicial = getFieldEx(row, idx, ['N.° EMPLEADOS INICIAL'], [['EMPLEADOS','INICIAL']]);
+  const mujeresEmpleadasInicial = getFieldEx(row, idx, ['N.° MUJERES EMPLEADAS INICIAL'], [['MUJERES','EMPLEADAS','INICIAL']]);
+  const empleadosFinal = getFieldEx(row, idx, ['N.° EMPLEADOS FINAL'], [['EMPLEADOS','FINAL']]);
+  const mujeresEmpleadasFinal = getFieldEx(row, idx, ['N.° MUJERES EMPLEADAS FINAL'], [['MUJERES','EMPLEADAS','FINAL']]);
+  const ventasInicial = getFieldEx(row, idx, ['VENTAS MENSUALES AL INICIAR LA INTERVENCION'], [['VENTAS','INICIAR']]);
+  const ventasFinal = getFieldEx(row, idx, ['VENTAS MENSUALES AL FINALIZAR LA INTERVENCION'], [['VENTAS','FINALIZAR']]);
+  const valorActivos = getFieldEx(row, idx, ['VALOR TOTAL DE LOS ACTIVOS A ULTIMO PERIODO'], [['VALOR','ACTIVOS']]);
+  const liderazgoFemenino = getFieldEx(row, idx, ['¿LA PRESIDENCIA O DIRECCION GENERAL DE LA EMPRESA ESTA A CARGO DE UNA O MAS MUJERES?'], [['PRESIDENCIA','MUJERES']]);
+  const propiedadFemenina = getFieldEx(row, idx, ['¿AL MENOS EL 51% DE LA EMPRESA ES PROPIEDAD DE UNA O MAS MUJERES?'], [['PROPIEDAD','MUJERES']]);
+  const liderazgoJoven = getFieldEx(row, idx, ['¿LA PRESIDENCIA O DIRECCION GENERAL DE LA EMPRESA ESTA A CARGO DE UNA PERSONA CON HASTA 28 ANOS?'], [['PRESIDENCIA','28']]);
+  const anclaId = getFieldEx(row, idx, ['NUMERO DE IDENTIFICACION DE LA EMPRESA ANCLA O UNIDAD PRODUCTIVA'], [['EMPRESA','ANCLA']]);
+  const anclaDV = getFieldEx(row, idx, ['DIGITO DE VERIFICACION DE LA EMPRESA ANCLA O UNIDAD PRODUCTIVA'], [['DIGITO','VERIFICACION']]);
+  const anclaRazonSocial = getFieldEx(row, idx, ['RAZON SOCIAL DE LA EMPRESA ANCLA O UNIDAD PRODUCTIVA'], [['RAZON','ANCLA']]);
+  const categoriaClimatica = getFieldEx(row, idx, ['CATEGORIA DE ACCION CLIMATICA'], [['ACCION','CLIMATICA']]);
+  const analisisUP = getFieldEx(row, idx, ['ANALISIS DE LA UP'], [['ANALISIS','UP']]);
+  const categoriaRnt = getFieldEx(row, idx, ['CATEGORIA RNT'], [['CATEGORIA','RNT']]);
+  const web1 = getFieldEx(row, idx, ['PAGINA WEB 1'], [['PAGINA','WEB','1']]);
+  const otraRed = getFieldEx(row, idx, ['OTRO'], []);
+  const visibilidadDigital = getFieldEx(row, idx, ['CUENTA CON VISIBILIDAD DIGITAL'], [['VISIBILIDAD','DIGITAL']]);
+  const ubicacionTexto = getFieldEx(row, idx, ['UBICACION'], []);
+  const contactoCorreo = getFieldEx(row, idx, ['CORREO DE LA PERSONA DE CONTACTO DE LA MIPYME O UNIDAD PRODUCTIVA'], [['CORREO','CONTACTO']]);
+  const contactoTelefono = getFieldEx(row, idx, ['TELEFONO MOVIL DE LA PERSONA DE CONTACTO DE LA MIPYME O UNIDAD PRODUCTIVA'], [['TELEFONO','MOVIL','CONTACTO']]);
+
   const departamento = departamentoRaw ? (departamentoRaw.trim().toUpperCase()) : null;
   const deptKey = departamento ? (DEPT_NAME_MAP[departamento] || departamento) : null;
 
@@ -3683,7 +3798,7 @@ function mapRowToBeneficiario(row, i){
     }
   }
 
-  const cat = INSTRUMENTO_KEY[(programa || '').trim().toUpperCase()] || 'otro';
+  const cat = resolveCategoryKey(programa);
 
   return {
     id: codigo || ('row-' + i),
@@ -3705,6 +3820,63 @@ function mapRowToBeneficiario(row, i){
     contacto_nombre: contactoNombre,
     contacto_cargo: contactoCargo,
     nbeneficiadas: nbeneficiadas ? parseFloat(nbeneficiadas) : null,
+    coords: coordsRaw,
+
+    id_interno: idInterno,
+    beneficio_recibido: beneficioRecibido,
+    tipo_identificacion: tipoIdentificacion,
+    sexo,
+    grupo_etnico: grupoEtnico,
+    discapacidad,
+    victima,
+    poblacion_vulnerable: poblacionVulnerable,
+    es_migrante: esMigrante,
+    pais_migrante: paisMigrante,
+    lgbtiq,
+    trabajo_cuidado: trabajoCuidado,
+    adulto_mayor: adultoMayor,
+    joven,
+    veterano,
+    fecha_nacimiento: fechaNacimiento,
+    edad,
+    escolaridad,
+    ubicacion_geografica: ubicacionGeografica,
+    actividad_ciiu: actividadCIIU,
+    subsector,
+    barrio,
+    direccion,
+    telefono,
+    telefono_otro: telefonoOtro,
+    email,
+    fecha_estado: fechaEstado,
+    razon_retiro: razonRetiro,
+    tiene_rut: tieneRut,
+    tiene_registro_mercantil: tieneRegistroMercantil,
+    fecha_matricula_mercantil: fechaMatriculaMercantil,
+    anos_formalizacion: anosFormalizacion,
+    empleados_inicial: empleadosInicial,
+    mujeres_empleadas_inicial: mujeresEmpleadasInicial,
+    empleados_final: empleadosFinal,
+    mujeres_empleadas_final: mujeresEmpleadasFinal,
+    ventas_inicial: ventasInicial,
+    ventas_final: ventasFinal,
+    valor_activos: valorActivos,
+    liderazgo_femenino: liderazgoFemenino,
+    propiedad_femenina: propiedadFemenina,
+    liderazgo_joven: liderazgoJoven,
+    ancla_id: anclaId,
+    ancla_dv: anclaDV,
+    ancla_razon_social: anclaRazonSocial,
+    categoria_climatica: categoriaClimatica,
+    analisis_up: analisisUP,
+    categoria_rnt: categoriaRnt,
+    web1,
+    otra_red: otraRed,
+    visibilidad_digital: visibilidadDigital,
+    ubicacion_texto: ubicacionTexto,
+    contacto_correo: contactoCorreo,
+    contacto_telefono: contactoTelefono,
+
     approx,
     onMap,
     x, y,
@@ -3861,14 +4033,16 @@ viewToggleEl.querySelectorAll('.view-btn').forEach(btn=>{
 
 const chipsEl = document.getElementById('chips');
 function buildChips(){
+  const previousActive = activeCategory;
+  chipsEl.innerHTML = '';
   const all = document.createElement('div');
-  all.className = 'chip active';
+  all.className = 'chip' + (previousActive === 'todos' ? ' active' : '');
   all.dataset.cat = 'todos';
   all.innerHTML = '<span class="dot" style="background:#8A8577"></span>Todos';
   chipsEl.appendChild(all);
   Object.entries(CATEGORIES).forEach(([key,c])=>{
     const el = document.createElement('div');
-    el.className = 'chip';
+    el.className = 'chip' + (previousActive === key ? ' active' : '');
     el.dataset.cat = key;
     el.style.color = CATEGORY_DARK[key];
     el.innerHTML = `<span class="dot" style="background:${c.color}"></span>${c.label}`;
@@ -4076,6 +4250,20 @@ function renderList(){
   });
 }
 
+// Muestra '—' para valores vacíos, en vez de omitir el campo — así se ve
+// explícitamente que la columna existe en la base aunque no tenga dato.
+function fmtVal(v){
+  if (v === null || v === undefined || v === '') return '—';
+  return v;
+}
+
+function metaSection(title, fields){
+  const rows = fields.map(([label, val]) =>
+    `<div><div class="l">${label}</div><div class="v">${fmtVal(val)}</div></div>`
+  ).join('');
+  return `<p class="section-label">${title}</p><div class="meta-grid">${rows}</div>`;
+}
+
 function renderPanel(){
   const panel = document.getElementById('panel');
   const b = BENEFICIARIOS.find(x=>x.id===selectedId);
@@ -4094,8 +4282,10 @@ function renderPanel(){
 
   const links = [];
   if(b.web) links.push(`<a href="${b.web.startsWith('http')?b.web:'https://'+b.web}" target="_blank" rel="noopener">🌐 ${b.web}</a>`);
+  if(b.web1 && b.web1 !== b.web) links.push(`<a href="${b.web1.startsWith('http')?b.web1:'https://'+b.web1}" target="_blank" rel="noopener">🌐 ${b.web1}</a>`);
   if(b.fb) links.push(`<a href="${b.fb.startsWith('http')?b.fb:'https://'+b.fb}" target="_blank" rel="noopener">Facebook</a>`);
   if(b.ig) links.push(`<a href="${b.ig.startsWith('http')?b.ig:'https://'+b.ig}" target="_blank" rel="noopener">Instagram</a>`);
+  if(b.otra_red) links.push(`<a href="${b.otra_red.startsWith('http')?b.otra_red:'https://'+b.otra_red}" target="_blank" rel="noopener">🔗 ${b.otra_red}</a>`);
 
   panel.innerHTML = `
     <div class="tag" style="background:${c.color}22; color:${dark}">
@@ -4107,19 +4297,113 @@ function renderPanel(){
 
     ${b.desc ? `<p class="ben-desc">${b.desc}</p>` : ''}
 
-    <div class="meta-grid">
-      <div><div class="l">Estado</div><div class="v">${b.estado || '—'}</div></div>
-      <div><div class="l">Tamaño</div><div class="v">${b.tamano || '—'}</div></div>
-      <div><div class="l">Sector</div><div class="v">${b.sector || '—'}</div></div>
-      <div><div class="l">RNT</div><div class="v">${b.rnt || '—'}</div></div>
-      <div><div class="l">ID</div><div class="v">${b.id}</div></div>
-      <div><div class="l">Clúster</div><div class="v">${(b.cluster && b.cluster!=='No aplica') ? b.cluster : '—'}</div></div>
-    </div>
+    ${metaSection('Instrumento y estado', [
+      ['ID', b.id],
+      ['ID interno', b.id_interno],
+      ['Instrumento', b.programa],
+      ['Beneficio recibido', b.beneficio_recibido],
+      ['Estado', b.estado],
+      ['Fecha de estado', b.fecha_estado],
+      ['Razón del retiro', b.razon_retiro],
+      ['Personas beneficiadas', (b.nbeneficiadas !== null && b.nbeneficiadas !== undefined && !isNaN(b.nbeneficiadas)) ? b.nbeneficiadas : null],
+    ])}
 
-    ${(b.contacto_nombre || links.length) ? `
-    <p class="section-label">Contacto</p>
+    ${metaSection('Datos del beneficiario', [
+      ['Tipo de identificación', b.tipo_identificacion],
+      ['Representante legal', b.legal],
+      ['Sexo', b.sexo],
+      ['Fecha de nacimiento', b.fecha_nacimiento],
+      ['Edad', b.edad],
+      ['Nivel de escolaridad', b.escolaridad],
+    ])}
+
+    ${metaSection('Caracterización poblacional', [
+      ['Grupo étnico', b.grupo_etnico],
+      ['Discapacidad', b.discapacidad],
+      ['Víctima', b.victima],
+      ['Población vulnerable', b.poblacion_vulnerable],
+      ['Persona migrante', b.es_migrante],
+      ['País migrante', b.pais_migrante],
+      ['LGBTIQ+', b.lgbtiq],
+      ['Trabajos de cuidado', b.trabajo_cuidado],
+      ['Adulto mayor (60+)', b.adulto_mayor],
+      ['Joven (14–28)', b.joven],
+      ['Veterano fuerza pública', b.veterano],
+    ])}
+
+    ${metaSection('Ubicación', [
+      ['Departamento', b.departamento],
+      ['Municipio', b.municipio],
+      ['Barrio', b.barrio],
+      ['Dirección', b.direccion],
+      ['Ubicación geográfica', b.ubicacion_geografica],
+      ['Ubicación', b.ubicacion_texto],
+      ['Coordenadas', b.coords],
+    ])}
+
+    ${metaSection('Empresa / unidad productiva', [
+      ['Sector económico', b.sector],
+      ['Subsector económico', b.subsector],
+      ['Actividad económica CIIU', b.actividad_ciiu],
+      ['Tamaño', b.tamano],
+      ['Tiene RUT', b.tiene_rut],
+      ['Tiene registro mercantil', b.tiene_registro_mercantil],
+      ['Fecha matrícula mercantil', b.fecha_matricula_mercantil],
+      ['Años de formalización', b.anos_formalizacion],
+    ])}
+
+    ${metaSection('Empleo y ventas', [
+      ['Empleados (inicial)', b.empleados_inicial],
+      ['Mujeres empleadas (inicial)', b.mujeres_empleadas_inicial],
+      ['Empleados (final)', b.empleados_final],
+      ['Mujeres empleadas (final)', b.mujeres_empleadas_final],
+      ['Ventas mensuales (inicio)', b.ventas_inicial],
+      ['Ventas mensuales (fin)', b.ventas_final],
+      ['Valor total de activos', b.valor_activos],
+    ])}
+
+    ${metaSection('Liderazgo e inclusión', [
+      ['Presidencia a cargo de mujeres', b.liderazgo_femenino],
+      ['51%+ propiedad femenina', b.propiedad_femenina],
+      ['Presidencia a cargo de joven (≤28)', b.liderazgo_joven],
+    ])}
+
+    ${metaSection('Empresa ancla / clúster', [
+      ['Razón social empresa ancla', b.ancla_razon_social],
+      ['ID empresa ancla', b.ancla_id],
+      ['Dígito de verificación', b.ancla_dv],
+      ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
+      ['Categoría acción climática', b.categoria_climatica],
+    ])}
+
+    ${metaSection('Sostenibilidad y RNT', [
+      ['Posee RNT', b.rnt],
+      ['Categoría RNT', b.categoria_rnt],
+      ['Análisis de la UP', b.analisis_up],
+    ])}
+
+    ${metaSection('Presencia digital', [
+      ['Cuenta con visibilidad digital', b.visibilidad_digital],
+      ['Página web', b.web],
+      ['Página web (2)', b.web1],
+      ['Facebook', b.fb],
+      ['Instagram', b.ig],
+      ['Otro enlace', b.otra_red],
+    ])}
+
+    ${metaSection('Contacto', [
+      ['Nombre de contacto', b.contacto_nombre],
+      ['Cargo de contacto', b.contacto_cargo],
+      ['Correo de contacto', b.contacto_correo],
+      ['Teléfono móvil de contacto', b.contacto_telefono],
+      ['Teléfono representante/beneficiario', b.telefono],
+      ['Otro teléfono', b.telefono_otro],
+      ['Email beneficiario', b.email],
+    ])}
+
+    ${links.length ? `
+    <p class="section-label">Enlaces</p>
     <div class="contact-row">
-      ${b.contacto_nombre ? `<span style="font-size:13px;">${b.contacto_nombre}${b.contacto_cargo ? ' · ' + b.contacto_cargo : ''}</span>` : ''}
       ${links.join('')}
     </div>` : ''}
 
@@ -4144,6 +4428,7 @@ async function init(){
     console.error('Error cargando beneficiarios desde Sheets:', err, fetchDebugLog);
     BENEFICIARIOS = [];
   }
+  buildChips();
   renderStats();
   renderMap();
   renderList();
