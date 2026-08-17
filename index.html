@@ -4322,7 +4322,7 @@ function renderPanel(){
     ${metaSection('Instrumento y estado', [
       ['ID', b.id],
       ['Representante legal', b.legal],
-      ['Instrumento', b.programa],
+      ['Proyecto', b.programa],
       ['Beneficio recibido', b.beneficio_recibido],
       ['Estado', b.estado],
       ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
@@ -4342,10 +4342,9 @@ function renderPanel(){
     ])}
 
     ${metaSection('Empleo y ventas', [
-      ['Empleados (inicial)', b.empleados_inicial],
-      ['Mujeres empleadas (inicial)', b.mujeres_empleadas_inicial],
-      ['Empleados (final)', b.empleados_final],
-      ['Mujeres empleadas (final)', b.mujeres_empleadas_final],
+      ['Empleados', b.empleados_inicial],
+      ['Mujeres empleadas', b.mujeres_empleadas_inicial],
+
     ])}
 
     ${metaSection('Liderazgo e inclusión', [
