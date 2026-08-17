@@ -4084,7 +4084,6 @@ function renderStats(){
   const note = document.getElementById('insularNote');
   if(insular > 0){
     note.style.display = 'block';
-    note.innerHTML = `<b>${insular}</b> beneficiarios sin ubicación geográfica reconocible (departamento vacío o fuera del mapa continental) no se muestran en el mapa. Sí aparecen en la lista por municipio.`;
   } else {
     note.style.display = 'none';
   }
@@ -4318,6 +4317,7 @@ function renderPanel(){
       ['Sector económico', b.sector],
       ['Actividad económica CIIU', b.actividad_ciiu],
       ['Tamaño', b.tamano],
+      ['Posee RNT', b.rnt],
       ['Tiene RUT', b.tiene_rut],
       ['Tiene registro mercantil', b.tiene_registro_mercantil],
       ['Fecha matrícula mercantil', b.fecha_matricula_mercantil],
@@ -4340,12 +4340,6 @@ function renderPanel(){
     ${metaSection('Clúster', [
       ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
 
-    ])}
-
-    ${metaSection('RNT', [
-      ['Posee RNT', b.rnt],
-      ['Categoría RNT', b.categoria_rnt],
-      ['Análisis de la UP', b.analisis_up],
     ])}
 
     ${metaSection('Presencia digital', [
