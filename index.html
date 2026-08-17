@@ -4098,7 +4098,6 @@ function renderStats(){
   const note = document.getElementById('insularNote');
   if(insular > 0){
     note.style.display = 'block';
-    note.innerHTML = `<b>${insular}</b> beneficiarios sin ubicación geográfica reconocible (departamento vacío o fuera del mapa continental) no se muestran en el mapa. Sí aparecen en la lista por municipio.`;
   } else {
     note.style.display = 'none';
   }
@@ -4319,57 +4318,31 @@ function renderPanel(){
 
     ${metaSection('Instrumento y estado', [
       ['ID', b.id],
-      ['ID interno', b.id_interno],
+      ['Representante legal', b.legal],
       ['Instrumento', b.programa],
       ['Beneficio recibido', b.beneficio_recibido],
       ['Estado', b.estado],
-      ['Fecha de estado', b.fecha_estado],
-      ['Razón del retiro', b.razon_retiro],
+      ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
       ['Personas beneficiadas', (b.nbeneficiadas !== null && b.nbeneficiadas !== undefined && !isNaN(b.nbeneficiadas)) ? b.nbeneficiadas : null],
-    ])}
-
-    ${metaSection('Datos del beneficiario', [
-      ['Tipo de identificación', b.tipo_identificacion],
-      ['Representante legal', b.legal],
-      ['Sexo', b.sexo],
-      ['Fecha de nacimiento', b.fecha_nacimiento],
-      ['Edad', b.edad],
-      ['Nivel de escolaridad', b.escolaridad],
-    ])}
-
-    ${metaSection('Caracterización poblacional', [
-      ['Grupo étnico', b.grupo_etnico],
-      ['Discapacidad', b.discapacidad],
-      ['Víctima', b.victima],
-      ['Población vulnerable', b.poblacion_vulnerable],
-      ['Persona migrante', b.es_migrante],
-      ['País migrante', b.pais_migrante],
-      ['LGBTIQ+', b.lgbtiq],
-      ['Trabajos de cuidado', b.trabajo_cuidado],
-      ['Adulto mayor (60+)', b.adulto_mayor],
-      ['Joven (14–28)', b.joven],
-      ['Veterano fuerza pública', b.veterano],
     ])}
 
     ${metaSection('Ubicación', [
       ['Departamento', b.departamento],
       ['Municipio', b.municipio],
       ['Barrio', b.barrio],
-      ['Dirección', b.direccion],
       ['Ubicación geográfica', b.ubicacion_geografica],
       ['Ubicación', b.ubicacion_texto],
-      ['Coordenadas', b.coords],
+
     ])}
 
     ${metaSection('Empresa / unidad productiva', [
       ['Sector económico', b.sector],
-      ['Subsector económico', b.subsector],
       ['Actividad económica CIIU', b.actividad_ciiu],
       ['Tamaño', b.tamano],
+      ['Posee RNT', b.rnt],
       ['Tiene RUT', b.tiene_rut],
       ['Tiene registro mercantil', b.tiene_registro_mercantil],
       ['Fecha matrícula mercantil', b.fecha_matricula_mercantil],
-      ['Años de formalización', b.anos_formalizacion],
     ])}
 
     ${metaSection('Empleo y ventas', [
@@ -4377,9 +4350,6 @@ function renderPanel(){
       ['Mujeres empleadas (inicial)', b.mujeres_empleadas_inicial],
       ['Empleados (final)', b.empleados_final],
       ['Mujeres empleadas (final)', b.mujeres_empleadas_final],
-      ['Ventas mensuales (inicio)', b.ventas_inicial],
-      ['Ventas mensuales (fin)', b.ventas_final],
-      ['Valor total de activos', b.valor_activos],
     ])}
 
     ${metaSection('Liderazgo e inclusión', [
@@ -4388,38 +4358,6 @@ function renderPanel(){
       ['Presidencia a cargo de joven (≤28)', b.liderazgo_joven],
     ])}
 
-    ${metaSection('Empresa ancla / clúster', [
-      ['Razón social empresa ancla', b.ancla_razon_social],
-      ['ID empresa ancla', b.ancla_id],
-      ['Dígito de verificación', b.ancla_dv],
-      ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
-      ['Categoría acción climática', b.categoria_climatica],
-    ])}
-
-    ${metaSection('Sostenibilidad y RNT', [
-      ['Posee RNT', b.rnt],
-      ['Categoría RNT', b.categoria_rnt],
-      ['Análisis de la UP', b.analisis_up],
-    ])}
-
-    ${metaSection('Presencia digital', [
-      ['Cuenta con visibilidad digital', b.visibilidad_digital],
-      ['Página web', b.web],
-      ['Página web (2)', b.web1],
-      ['Facebook', b.fb],
-      ['Instagram', b.ig],
-      ['Otro enlace', b.otra_red],
-    ])}
-
-    ${metaSection('Contacto', [
-      ['Nombre de contacto', b.contacto_nombre],
-      ['Cargo de contacto', b.contacto_cargo],
-      ['Correo de contacto', b.contacto_correo],
-      ['Teléfono móvil de contacto', b.contacto_telefono],
-      ['Teléfono representante/beneficiario', b.telefono],
-      ['Otro teléfono', b.telefono_otro],
-      ['Email beneficiario', b.email],
-    ])}
 
     ${links.length ? `
     <p class="section-label">Enlaces</p>
