@@ -3788,7 +3788,7 @@ function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
 
 async function fetchRowsOnce(){
   try {
-    const rows = await fetchViaDirectFetch(APPS_SCRIPT_URL, 20000);
+    const rows = await fetchViaDirectFetch(APPS_SCRIPT_URL, 25000);
     fetchDebugLog.push({ label: 'apps-script (fetch directo)', ok: true, detail: (rows ? rows.length : 0) + ' filas recibidas' });
     return rows;
   } catch (err){
@@ -3798,7 +3798,7 @@ async function fetchRowsOnce(){
   }
 
   try {
-    const rows = await fetchViaJSONP(APPS_SCRIPT_URL, 25000);
+    const rows = await fetchViaJSONP(APPS_SCRIPT_URL, 30000);
     fetchDebugLog.push({ label: 'apps-script (JSONP)', ok: true, detail: (rows ? rows.length : 0) + ' filas recibidas' });
     return rows;
   } catch (err2){
