@@ -4324,15 +4324,8 @@ function renderPanel(){
       ['Estado', b.estado],
       ['Clúster o aglomeración', (b.cluster && b.cluster!=='No aplica') ? b.cluster : null],
       ['Personas beneficiadas', (b.nbeneficiadas !== null && b.nbeneficiadas !== undefined && !isNaN(b.nbeneficiadas)) ? b.nbeneficiadas : null],
-    ])}
-
-    ${metaSection('Ubicación', [
-      ['Departamento', b.departamento],
-      ['Municipio', b.municipio],
-      ['Barrio', b.barrio],
       ['Ubicación geográfica', b.ubicacion_geografica],
       ['Ubicación', b.ubicacion_texto],
-
     ])}
 
     ${metaSection('Empresa / unidad productiva', [
